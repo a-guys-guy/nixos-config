@@ -9,7 +9,7 @@
   # connects here) and the `dashboard` web admin UI — bind 127.0.0.1 there.
   targetHost = "46.225.139.112"; # public IP of the Ubuntu VPS hosting Hermes
   targetUser = "guy"; # account on that VPS
-  sshKey = "/root/.ssh/hermes_tunnel"; # private key, provisioned out-of-band (0600)
+  sshKey = "/home/jonas/.ssh/id_ed25519"; # private key, provisioned out-of-band (0600)
 
   bind = config.sys.bindAddress; # noether's tailnet address (100.64.0.5)
   fqdn = "hermes.noether.headscale.local"; # MagicDNS name served by this reverse proxy
@@ -81,10 +81,13 @@ in {
     '';
   };
 
-  # Reverse proxy on the tailnet interface. Requests on the tailnet address
-  # with Host: hermes.noether.headscale.local are dispatched here; the public
-  # *:80 / *:443 vhosts (headscale, matrix, dufs, ...) are untouched — nginx
-  # selects by address + Host.
+  # Reverse proxy on the tailnet interface. Because the hermes vhosts bind a
+  # specific address (bind), nginx would otherwise make the first of them the
+  # *default* server for that socket and silently serve any Host that reaches
+  # the tailnet address — including the reserved bare noether.headscale.local
+  # name and unknown names. To keep hermes strictly name-routed and reserve
+  # the bare name for a future tailnet-wide overview server, add a catch-all
+  # default_server on that port that closes any unmatched request with 444.
   services.nginx.virtualHosts = {
     # Dashboard (web admin UI) on the tailnet's default HTTP port: 80.
     "hermes-dashboard" = mkVhost {
