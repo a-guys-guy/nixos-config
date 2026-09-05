@@ -81,11 +81,35 @@ in {
     '';
   };
 
-  # Reverse proxy on the tailnet interface. Requests on the tailnet address
-  # with Host: hermes.noether.headscale.local are dispatched here; the public
-  # *:80 / *:443 vhosts (headscale, matrix, dufs, ...) are untouched — nginx
-  # selects by address + Host.
+  # Reverse proxy on the tailnet interface. Because the hermes vhosts bind a
+  # specific address (bind), nginx would otherwise make the first of them the
+  # *default* server for that socket and silently serve any Host that reaches
+  # the tailnet address — including the reserved bare noether.headscale.local
+  # name and unknown names. To keep hermes strictly name-routed and reserve
+  # the bare name for a future tailnet-wide overview server, add a catch-all
+  # default_server on that port that closes any unmatched request with 444.
   services.nginx.virtualHosts = {
+    # Catch-all: the default server for the tailnet HTTP port. Anything that
+    # does not hit server_name below (the bare noether.headscale.local name,
+    # unknown hosts, missing Host) is dropped here — never leaked to hermes.
+    "hermes-tailnet-reserved" = {
+      listen = [
+        {
+          addr = bind;
+          port = 80;
+          ssl = false;
+        }
+      ];
+      default = true; # this vhost is the default_server for 100.64.0.5:80
+      serverName = "noether.headscale.local"; # reserved — drop, don't serve hermes
+      locations."/" = {
+        return = "444";
+      };
+      # no access log: unknown hosts are just dropped
+      extraConfig = ''
+        error_log /var/log/nginx/hermes_reserved_error.log;
+      '';
+    };
     # Dashboard (web admin UI) on the tailnet's default HTTP port: 80.
     "hermes-dashboard" = mkVhost {
       tailnetPort = 80;
