@@ -16,6 +16,7 @@
     ../modules/services/matrix.nix
     ../modules/services/storage-box.nix
     ../modules/services/home-manager.nix
+    ../modules/services/hermes-tunnel.nix
     ./noether-hardware.nix
   ];
 
