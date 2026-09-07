@@ -52,11 +52,15 @@
   # switches. `runuser` runs `nix flake update` as jonas, writing flake.lock into his repo and
   # leaving it unstaged (exactly his manual workflow). Step 2 is the autoUpgrade switch as root
   # (see modules/core.nix). The gitSafeDir activation above lets root READ the repo for step 2.
+  # Syntax note: nix >= 2.19 removed the legacy `nix flake update <flake-url> <inputs...>`
+  # positional form — with it, the path was parsed as an INPUT NAME and nix fell back to cwd
+  # ("/"), failing with "path \"/\" does not contain a 'flake.nix'". The flake must be passed
+  # via --flake, input names remain positional after it.
   systemd.services.nixos-upgrade.serviceConfig.ExecStartPre = [
     (lib.concatStrings [
       "${pkgs.util-linux}/bin/runuser -u jonas -- "
       "${pkgs.nix}/bin/nix --extra-experimental-features 'nix-command flakes' "
-      "flake update /home/jonas/nixos-config/systems/noether "
+      "flake update --flake /home/jonas/nixos-config/systems/noether "
       "nixpkgs-stable home-manager-stable"
     ])
   ];
